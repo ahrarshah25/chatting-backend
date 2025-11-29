@@ -1,12 +1,20 @@
 const express = require('express');
 const cors = require('cors');
 const webpush = require('web-push');
-
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+
+// CORS fix: allow frontend URL or all origins
+app.use(cors({
+  origin: '*', // change to your frontend URL in production
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type']
+}));
+
 app.use(express.json());
+
+const PORT = process.env.PORT || 5000;
 
 app.get('/', (req, res) => {
   return res.json({
@@ -33,19 +41,15 @@ if (PUBLIC_VAPID && PRIVATE_VAPID) {
 } else {
   console.warn('VAPID keys missing — push notifications disabled until keys are set.');
 }
+
 let subscriptions = [];
 
 app.get('/config', (req, res) => {
-  try {
-    return res.json({
-      supabaseUrl: process.env.SUPABASE_URL || '',
-      supabaseKey: process.env.SUPABASE_KEY || '',
-      publicVapidKey: PUBLIC_VAPID || ''
-    });
-  } catch (err) {
-    console.error('GET /config error', err);
-    return res.status(500).json({ error: 'internal' });
-  }
+  return res.json({
+    supabaseUrl: process.env.SUPABASE_URL || '',
+    supabaseKey: process.env.SUPABASE_KEY || '',
+    publicVapidKey: PUBLIC_VAPID || ''
+  });
 });
 
 app.post('/save-subscription', (req, res) => {
@@ -89,12 +93,15 @@ app.post('/unsubscribe', (req, res) => {
 app.post('/send-message-notification', async (req, res) => {
   try {
     const { senderName, receiverId, text, url } = req.body;
-    if (!senderName) return res.status(400).json({ error: 'senderName missing' });
+
+    // safe fallback for senderName
+    const safeSenderName = senderName || 'Unknown User';
+
     if (!receiverId) return res.status(400).json({ error: 'receiverId missing' });
 
     const payload = JSON.stringify({
-      title: senderName,
-      message: `You have a new message from ${senderName}: ${text || 'New message'}`,
+      title: safeSenderName,
+      message: `You have a new message from ${safeSenderName}: ${text || 'New message'}`,
       url: url || '/chat'
     });
 
@@ -106,20 +113,22 @@ app.post('/send-message-notification', async (req, res) => {
 
     await Promise.all(
       targets.map(t =>
-        webpush
-          .sendNotification(t.subscription, payload)
-          .then(() => console.log('Notification sent to', t.subscription.endpoint))
-          .catch(err => {
-            console.error('webpush error for endpoint', t.subscription && t.subscription.endpoint, err && err.stack ? err.stack : err);
-          })
+        webpush.sendNotification(t.subscription, payload).catch(err => {
+          console.error('webpush error for endpoint', t.subscription && t.subscription.endpoint, err);
+        })
       )
     );
 
     return res.json({ message: 'Notification processed' });
   } catch (err) {
-    console.error('POST /send-message-notification error', err && err.stack ? err.stack : err);
+    console.error('POST /send-message-notification error', err);
     return res.status(500).json({ error: 'internal' });
   }
 });
+
+// Optional listener for local testing
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => console.log(`Backend running locally on http://localhost:${PORT}`));
+}
 
 module.exports = app;
