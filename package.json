@@ -1,26 +1,15 @@
 {
-  "name": "backend",
-  "lockfileVersion": 3,
-  "requires": true,
-  "packages": {},
+  "name": "chatting-backend",
   "version": "1.0.0",
-  "description": "",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "type": "commonjs",
-  "dependencies": {
-    "cors": "^2.8.5",
-    "dotenv": "^17.2.3",
-    "express": "^5.1.0",
-    "web-push": "^3.6.7"
+  "scripts": {
+    "start": "node index.js"
   },
-  "devDependencies": {
-    "nodemon": "^3.1.11"
+  "dependencies": {
+    "express": "^4.19.0",
+    "cors": "^2.8.5",
+    "web-push": "^3.5.0",
+    "dotenv": "^16.4.0"
   }
 }
